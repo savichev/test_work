@@ -1,0 +1,64 @@
+---
+ - hosts: test
+   vars:
+    sysctl_config:
+      fs.files-max: 1204000
+      somaxconn: 65535
+    ssh_keys_dir: "public_keys"
+   become: true
+   become_user: root
+   tasks:
+    - name: "Подготавливаем среду."
+      block:
+        - name: "Применяем переменные sysctl"
+          sysctl:
+            name: '{{ item.key }}'
+            value: '{{ item.value }}'
+            sysctl_set: yes
+            state: present
+            reload: yes
+            ignoreerrors: yes
+          with_dict: '{{ sysctl_config }}'
+        - name: "Устанавливаем необходимые пакеты"
+          apt:
+            name:
+              - nginx
+              - zsh
+              - wget
+            state: latest
+            update_cache: true
+          notify:
+            - restart nginx
+
+    - name: "Копируем ключи"
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', item) }}"
+      with_fileglob: "public_keys/*.pub"
+      tags:
+        users
+    
+    - name: "Копируем необходимые файлы"
+      block:
+        - name: "Клонируем репозитарий"
+          git:
+            repo: 'https://github.com/alirni/Under-Construction.git'
+            dest: /tmp/Under-Construction/html
+            clone: yes
+            separate_git_dir: /tmp/Under-Construction/git
+        - name: "Копируем файлы"
+          copy: 
+            src: /tmp/Under-Construction/html/
+            dest: /var/www/html
+            remote_src: yes
+        - name: "Подчищаем за собой"
+          file:
+            path: /tmp/Under-Construction
+            state: absent
+   
+   handlers:
+     - name: restart nginx
+       service: name=nginx state=restarted
+       become: yes
+...
