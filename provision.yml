@@ -27,6 +27,10 @@
               - wget
             state: latest
             update_cache: true
+        - name: "Заменяем конфигурацию для default хоста"
+          template:
+            src=templates/default
+            dest=/etc/nginx/sites-available/default
           notify:
             - restart nginx
 
@@ -50,7 +54,7 @@
         - name: "Копируем файлы"
           copy: 
             src: /tmp/Under-Construction/html/
-            dest: /var/www/html
+            dest: /var/www
             remote_src: yes
         - name: "Подчищаем за собой"
           file:
