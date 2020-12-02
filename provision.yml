@@ -1,10 +1,13 @@
 ---
  - hosts: test
    vars:
+    # sysctl_config содержит ключи и значения, которые будут применяться sysctl
     sysctl_config:
       fs.files-max: 1204000
       somaxconn: 65535
+    # ssh_keys_dir содержит путь до дирректории с публичными ключами в формате filename.pub
     ssh_keys_dir: "public_keys"
+   # Плейбук будем выполнять с повышением прав
    become: true
    become_user: root
    tasks:
@@ -19,6 +22,8 @@
             reload: yes
             ignoreerrors: yes
           with_dict: '{{ sysctl_config }}'
+          tags:
+            - sysctlconf
         - name: "Устанавливаем необходимые пакеты"
           apt:
             name:
@@ -27,14 +32,18 @@
               - wget
             state: latest
             update_cache: true
+          tags:
+            - installpkgs
         - name: "Заменяем конфигурацию для default хоста"
           template:
             src=templates/default
             dest=/etc/nginx/sites-available/default
           notify:
             - restart nginx
+          tags:
+            - nginxconf
 
-    - name: "Копируем ключи"
+    - name: "Копируем публичные ключи pub"
       authorized_key:
         user: root
         state: present
@@ -51,18 +60,26 @@
             dest: /tmp/Under-Construction/html
             clone: yes
             separate_git_dir: /tmp/Under-Construction/git
+          tags:
+            - gitclone
         - name: "Копируем файлы"
           copy: 
             src: /tmp/Under-Construction/html/
             dest: /var/www
             remote_src: yes
+          tags:
+            - copyfiles  
         - name: "Подчищаем за собой"
           file:
             path: /tmp/Under-Construction
             state: absent
+          tags:
+            - rmtrash
    
    handlers:
      - name: restart nginx
        service: name=nginx state=restarted
        become: yes
+       tags:
+         - nginx
 ...
