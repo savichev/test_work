@@ -48,7 +48,7 @@
         user: root
         state: present
         key: "{{ lookup('file', item) }}"
-      with_fileglob: "public_keys/*.pub"
+      with_fileglob: "{{ ssh_keys_dir }}/*.pub"
       tags:
         users
     
