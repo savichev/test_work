@@ -1,2 +1,2 @@
 [test]
-ubnt ansible_host=192.168.122.180 ansible_user=test ansible_password=test ansible_connection=ssh ansible_become_method=sudo ansible_sudo_pass=test
+ubnt ansible_host=192.168.122.165 ansible_user=test ansible_password=test ansible_connection=ssh ansible_become_method=sudo ansible_sudo_pass=test

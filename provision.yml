@@ -30,7 +30,7 @@
               - nginx
               - zsh
               - wget
-            state: latest
+            state: present
             update_cache: true
           tags:
             - installpkgs
@@ -39,7 +39,7 @@
             src=templates/default
             dest=/etc/nginx/sites-available/default
           notify:
-            - restart nginx
+            - reload nginx
           tags:
             - nginxconf
 
@@ -77,8 +77,8 @@
             - rmtrash
    
    handlers:
-     - name: restart nginx
-       service: name=nginx state=restarted
+     - name: reload nginx
+       service: name=nginx state=reloaded
        become: yes
        tags:
          - nginx
