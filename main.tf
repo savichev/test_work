@@ -16,6 +16,7 @@ provider "libvirt" {
   uri = "qemu:///system"
 }
 
+# Создаем пул
 resource "libvirt_pool" "os_pool" {
   name = format("os_pool.%s", var.os_type)
   type = "dir"
