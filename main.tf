@@ -1,15 +1,3 @@
-# Переменные
-variable "os_type"   { default = "ubuntu" }
-variable "img_src"   { default = "https://cloud-images.ubuntu.com/releases/bionic/release/ubuntu-18.04-server-cloudimg-amd64.img" }
-# variable "img_src"   { default = "ubuntu-18.04-server-cloudimg-amd64.img" }
-variable "hostname"  { default = "ubnt1" }
-variable "domain"    { default = "dev.local" }
-variable "memoryMB"  { default = 1024 * 1 }
-variable "cpu"       { default = 2 }
-#locals {
-#  name = "${var.override_name != "" ? var.override_name : "${var.product}-{$var.env}"}"
-#}
-
 # Специфические настройки терраформ и провайдеров
 #####################################################
 terraform {
@@ -29,30 +17,29 @@ provider "libvirt" {
 }
 
 resource "libvirt_pool" "os_pool" {
-  name = "os_pool.ubuntu"
+  name = format("os_pool.%s", var.os_type)
   type = "dir"
-  path = "/tmp/terraform-provider-libvirt-pool-${var.os_type}"
+  path = format("/tmp/terraform-provider-libvirt-pool-%s", var.os_type)
 }
 
-# We fetch the latest ubuntu release image from their mirrors
+# Нам нужно разместить образ ОС в пул libvirt для дальнейшего использования
 resource "libvirt_volume" "os_image" {
-  #name   = var.hostname
-  name   = "${var.hostname}.qcow2"
+  name   = format("%s-%s-%s.qcow2",var.os_type, var.os_ver, var.os_rel)
   pool   = "default"
   source = var.img_src
   format = "qcow2"
 }
-
+# и сгенерированный образ cloud init в тот же, для удобства пул (но не обязательно!)
 resource "libvirt_cloudinit_disk" "commoninit" {
-  name           = "${var.hostname}-commoninit.iso"
-  user_data      = "#cloud-config\n#\n\ngroups:\n  - ubuntu: [root,sys]\n\nusers:\n  - default\n  - name: test\n    gecos: test\n    primary_group: test\n    groups: users, admin, sudo\n    lock_passwd: false\n    plain_text_passwd: test\n\nssh_pwauth: True\nchpasswd:\n  list: |\n     root:master\n  expire: False\n"
-  network_config = "version: 2\nethernets:\n  ens3:\n    dhcp4: true\n    dhcp6: false\n    addresses:\n        - 192.168.122.165/24\n    gateway4: 192.168.122.1\n    nameservers:\n      search: [dev.local, home.local]\n      addresses: [192.168.122.1, 8.8.8.8]"
+  name           = format("%s-%s-%s-commoninit.iso", var.os_type, var.os_ver, var.os_rel)
+  user_data      = var.init_user_data
+  network_config = var.init_network_config
   pool           = libvirt_pool.os_pool.name
 }
 
 # Создаём машину
 resource "libvirt_domain" "main" {
-  name   = var.hostname
+  name   = format("%s-%s-%s", var.os_type, var.os_ver, var.os_rel)
   memory = var.memoryMB
   vcpu   = var.cpu
   disk {
@@ -60,7 +47,7 @@ resource "libvirt_domain" "main" {
   }
   
   network_interface {
-    network_name   = "default"
+    network_name   = var.network_name
   }
   
   cloudinit = libvirt_cloudinit_disk.commoninit.id
